@@ -1,4 +1,4 @@
-# StudyMate — AI-Powered Study Assistant
+# StudyMate - AI-Powered Study Assistant
 
 **StudyMate** is a web-based AI-powered study assistant designed for high school students, university students, and self-learners. It was built as a final year Computer Science project at the Global Wealth University, Benin City Study Centre, Nigeria
 *(Global Wealth University — Headquartered in Lome, Togo)*.
