@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Study Plan Generator</h1>
+  <p>Tell StudyMate exactly when you are free to study and it will build a personalised timetable around your schedule.</p>
+</div>
+
+<div class="plan-container">
+
+  <div class="sp-loading-overlay" id="spLoadingOverlay" style="display:none;">
+    <div class="sp-loading-box">
+      <div class="sp-spinner"></div>
+      <p class="sp-loading-title">Building your timetable...</p>
+      <p class="sp-loading-sub">The AI is analysing your schedule and subjects. This usually takes 10 to 20 seconds.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">Generate Your Study Plan</h3>
+
+    <form method="POST" action="{{ url_for('study_plan') }}" id="planForm">
+
+      <div class="form-group">
+        <label for="subjects">Your Subjects</label>
+        <textarea id="subjects" name="subjects" rows="3"
+          placeholder="Enter your subjects separated by commas. Example: Data Structures, Operating Systems, Computer Networks, Database Management"
+          required></textarea>
+        <small>List all the subjects you are currently studying this semester.</small>
+      </div>
+
+      <div class="form-group">
+        <label>Your Available Study Days &amp; Times</label>
+        <small style="display:block; margin-bottom: 0.75rem;">For each day you are free to study, tick the day and set your available time window.</small>
+
+        <div class="schedule-grid">
+          {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+          {% for day in days %}
+          <div class="schedule-row" id="row-{{ day }}">
+            <label class="day-checkbox-label">
+              <input type="checkbox" name="day_{{ day }}" value="{{ day }}" class="day-checkbox" onchange="toggleDay('{{ day }}')">
+              <span class="day-name">{{ day }}</span>
+            </label>
+            <div class="time-inputs" id="times-{{ day }}" style="display:none;">
+              <div class="time-pair">
+                <label>From</label>
+                <input type="time" name="start_{{ day }}" value="08:00">
+              </div>
+              <div class="time-pair">
+                <label>To</label>
+                <input type="time" name="end_{{ day }}" value="10:00">
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <small style="margin-top:0.5rem; display:block;">Select at least one day to continue.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="priority">Study Priority</label>
+        <select id="priority" name="priority">
+          <option value="balanced">Balanced: spread all subjects equally</option>
+          <option value="weak">Focus on weak subjects more</option>
+          <option value="exam">Exam mode: prioritise upcoming exams</option>
+        </select>
+        <small>This tells the AI how to distribute your study time.</small>
+      </div>
+
+      <div class="form-group">
+        <label for="notes">Any Additional Notes? <span style="font-weight:400; color: var(--text-light);">(Optional)</span></label>
+        <input type="text" id="notes" name="notes" placeholder="e.g. I have a Maths exam next Friday, skip Sundays for church">
+        <small>Any special instructions the AI should factor in.</small>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full" id="generateBtn">
+        Generate My Study Timetable
+      </button>
+
+    </form>
+  </div>
+
+  {% if plan_html %}
+  <div class="card plan-result">
+    <h3 class="card-title">Your Personalised Study Timetable</h3>
+    <div class="plan-content markdown-body" id="planContent">
+      {{ plan_html | safe }}
+    </div>
+    <div class="plan-print-row">
+      <button onclick="downloadPlan()" class="btn btn-download-plan">Download as PDF</button>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>const STUDYMATE_USER = "{{ user_name }}";</script>
+<style>
+  .schedule-grid {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .schedule-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.2s;
+  }
+  .schedule-row:last-child { border-bottom: none; }
+  .schedule-row.active { background: var(--primary-light); }
+  .day-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    min-width: 110px;
+    font-weight: 600;
+    color: var(--dark);
+  }
+  .day-checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+  .time-inputs {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .time-pair {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.88rem;
+    color: var(--text-light);
+  }
+  .time-pair input[type="time"] {
+    padding: 0.35rem 0.6rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--white);
+  }
+  .time-pair input[type="time"]:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+  .markdown-body p { margin-bottom: 0.6rem; }
+  .markdown-body p:last-child { margin-bottom: 0; }
+  .markdown-body strong { font-weight: 700; }
+  .markdown-body em { font-style: italic; }
+  .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+    font-weight: 700;
+    margin: 1.1rem 0 0.5rem;
+    color: var(--dark);
+  }
+  .markdown-body h1 { font-size: 1.2rem; }
+  .markdown-body h2 { font-size: 1.1rem; }
+  .markdown-body h3 { font-size: 1rem; }
+  .markdown-body ul, .markdown-body ol {
+    padding-left: 1.4rem;
+    margin: 0.4rem 0 0.75rem;
+  }
+  .markdown-body li { margin-bottom: 0.3rem; line-height: 1.7; }
+  .markdown-body hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1rem 0;
+  }
+  .btn-download-plan {
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+  }
+  .btn-download-plan:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+  }
+  .plan-print-row {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .sp-loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(245, 247, 255, 0.92);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .sp-loading-box {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 2.5rem 2rem;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    max-width: 360px;
+    width: 100%;
+  }
+  .sp-spinner {
+    width: 56px;
+    height: 56px;
+    border: 5px solid var(--primary-light);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: sp-spin 0.9s linear infinite;
+    margin: 0 auto 1.25rem;
+  }
+  @keyframes sp-spin { to { transform: rotate(360deg); } }
+  .sp-loading-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 0.5rem;
+  }
+  .sp-loading-sub {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    line-height: 1.6;
+  }
+  @media (max-width: 768px) {
+    .schedule-row { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    .day-checkbox-label { min-width: unset; }
+    .plan-print-row { justify-content: stretch; }
+    .plan-print-row .btn-download-plan { width: 100%; text-align: center; }
+  }
+</style>
+
+<script>
+  function toggleDay(day) {
+    const checkbox = document.querySelector('input[name="day_' + day + '"]');
+    const timesDiv = document.getElementById('times-' + day);
+    const row = document.getElementById('row-' + day);
+    if (checkbox.checked) {
+      timesDiv.style.display = 'flex';
+      row.classList.add('active');
+    } else {
+      timesDiv.style.display = 'none';
+      row.classList.remove('active');
+    }
+  }
+
+  const form = document.getElementById('planForm');
+  const generateBtn = document.getElementById('generateBtn');
+
+  form.addEventListener('submit', function(e) {
+    const checked = document.querySelectorAll('.day-checkbox:checked');
+    if (checked.length === 0) {
+      e.preventDefault();
+      alert('Please select at least one day you are available to study.');
+      return;
+    }
+    let valid = true;
+    checked.forEach(function(cb) {
+      const day = cb.value;
+      const start = document.querySelector('input[name="start_' + day + '"]').value;
+      const end = document.querySelector('input[name="end_' + day + '"]').value;
+      if (start >= end) {
+        alert('Please check your times for ' + day + '. The end time must be after the start time.');
+        valid = false;
+      }
+    });
+    if (!valid) { e.preventDefault(); return; }
+    generateBtn.textContent = 'Generating your timetable...';
+    generateBtn.disabled = true;
+    document.getElementById('spLoadingOverlay').style.display = 'flex';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  window.addEventListener('load', function() {
+    const plan = document.querySelector('.plan-result');
+    if (plan) {
+      setTimeout(function() {
+        plan.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+  });
+
+  function addWatermark(doc) {
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      doc.saveGraphicsState();
+      doc.setGState(new doc.GState({ opacity: 0.08 }));
+      doc.setTextColor(120, 120, 120);
+      doc.setFontSize(68);
+      doc.setFont('helvetica', 'bold');
+      doc.text('StudyMate', pageWidth / 2, pageHeight * 0.35, {
+        align: 'center',
+        angle: 30,
+        charSpace: 8
+      });
+      doc.text('StudyMate', pageWidth / 2, pageHeight * 0.72, {
+        align: 'center',
+        angle: 30,
+        charSpace: 8
+      });
+      doc.restoreGraphicsState();
+    }
+  }
+
+  function downloadPlan() {
+    const planContent = document.getElementById('planContent');
+    if (!planContent) {
+      alert('No timetable to download yet. Please generate a study plan first.');
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 15;
+    const usableWidth = pageWidth - margin * 2;
+    let y = 20;
+
+    function checkPage(needed) {
+      if (y + needed > 270) { doc.addPage(); y = 20; }
+    }
+
+    function wrapText(text, maxWidth, lineHeight) {
+      const lines = doc.splitTextToSize(String(text), maxWidth);
+      lines.forEach(function(line) {
+        checkPage(lineHeight);
+        doc.text(line, margin, y);
+        y += lineHeight;
+      });
+    }
+
+    doc.setFillColor(99, 102, 241);
+    doc.rect(0, 0, pageWidth, 30, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('StudyMate - Weekly Study Timetable', margin, 18);
+    y = 40;
+
+    const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+    doc.setTextColor(107, 114, 128);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Generated on: ' + date, margin, y); y += 6;
+    doc.text('Prepared for: ' + STUDYMATE_USER, margin, y); y += 10;
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 8;
+
+    const elements = planContent.querySelectorAll('h1, h2, h3, p, li, hr');
+    elements.forEach(function(el) {
+      const tag = el.tagName.toLowerCase();
+      const text = el.innerText.trim();
+      if (!text) return;
+
+      if (tag === 'h1') {
+        checkPage(12);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(30, 27, 75);
+        wrapText(text, usableWidth, 7);
+        y += 2;
+      } else if (tag === 'h2') {
+        checkPage(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(30, 27, 75);
+        wrapText(text, usableWidth, 6);
+        y += 2;
+      } else if (tag === 'h3') {
+        checkPage(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(99, 102, 241);
+        wrapText(text, usableWidth, 6);
+        y += 1;
+      } else if (tag === 'li') {
+        checkPage(6);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(55, 65, 81);
+        wrapText('  - ' + text, usableWidth, 5);
+      } else if (tag === 'p') {
+        checkPage(6);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(55, 65, 81);
+        wrapText(text, usableWidth, 5);
+        y += 2;
+      } else if (tag === 'hr') {
+        checkPage(6);
+        doc.setDrawColor(220, 220, 220);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 5;
+      }
+    });
+
+    checkPage(10);
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Downloaded from StudyMate - studymate.jaotechgworld.com', margin, y);
+
+    addWatermark(doc);
+    doc.save('StudyMate_Timetable_' + STUDYMATE_USER.split(' ')[0] + '.pdf');
+  }
+</script>
+{% endblock %}

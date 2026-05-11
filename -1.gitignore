@@ -1,0 +1,25 @@
+# Database — contains user data, never upload
+studymate.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables
+.env
+.env.local
+
+# Virtual environment
+venv/
+env/
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+stderr.log

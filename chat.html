@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <h1>AI Study Assistant</h1>
+  <p>Ask any academic or educational question and get an intelligent response instantly. StudyMate adapts to your level whether you are in high school, university, or learning on your own.</p>
+</div>
+
+<div class="chat-container">
+
+  <div class="chat-box" id="chatBox">
+
+    <div class="chat-message bot-message">
+      <div class="message-avatar">
+        <img src="{{ url_for('static', filename='img/favicon-192.png') }}" alt="StudyMate AI" class="avatar-img" />
+      </div>
+      <div class="message-bubble">
+        <p>Hello <strong>{{ user_name.split()[0] }}</strong>! I am your StudyMate AI Assistant. Ask me any academic or educational question and I will explain it clearly at the right level for you, whether you are in high school, university, or learning on your own.</p>
+      </div>
+    </div>
+
+    {% if history %}
+      {% for entry in history %}
+        <div class="chat-message user-message">
+          <div class="message-bubble"><p>{{ entry.question }}</p></div>
+          <div class="message-avatar">
+            <div class="avatar-user">You</div>
+          </div>
+        </div>
+        <div class="chat-message bot-message">
+          <div class="message-avatar">
+            <img src="{{ url_for('static', filename='img/favicon-192.png') }}" alt="StudyMate AI" class="avatar-img" />
+          </div>
+          <div class="message-bubble markdown-body">{{ entry.response | markdown | safe }}</div>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+  </div>
+
+  <div class="chat-input-area">
+    <div class="chat-input-wrapper">
+      <input
+        type="text"
+        id="questionInput"
+        placeholder="Type your academic question here..."
+        autocomplete="off"
+      />
+      <button id="sendBtn" onclick="sendQuestion()">
+        Send
+      </button>
+    </div>
+    <div class="chat-action-bar">
+      <button class="chat-action-btn chat-action-clear" onclick="clearChat()">Clear History</button>
+      <button class="chat-action-btn chat-action-download" onclick="downloadHistory()">Download History</button>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>const STUDYMATE_USER = "{{ user_name }}";</script>
+<style>
+  .chat-action-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    padding-top: 0.85rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .chat-action-btn {
+    flex: 1;
+    font-size: 0.82rem;
+    font-weight: 600;
+    background: none;
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    text-align: center;
+  }
+
+  .chat-action-clear {
+    color: #ef4444;
+    border: 1px solid #fca5a5;
+  }
+
+  .chat-action-clear:hover {
+    background: #fee2e2;
+  }
+
+  .chat-action-download {
+    color: var(--primary);
+    border: 1px solid #a5b4fc;
+  }
+
+  .chat-action-download:hover {
+    background: var(--primary-light);
+  }
+
+  .avatar-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .avatar-user {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: var(--white);
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .message-avatar {
+    min-width: 36px;
+  }
+
+  .markdown-body p { margin-bottom: 0.5rem; }
+  .markdown-body p:last-child { margin-bottom: 0; }
+  .markdown-body strong { font-weight: 700; }
+  .markdown-body em { font-style: italic; }
+  .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+    font-weight: 700;
+    margin: 0.75rem 0 0.4rem;
+    color: var(--dark);
+    font-size: 1rem;
+  }
+  .markdown-body ul, .markdown-body ol {
+    padding-left: 1.25rem;
+    margin: 0.4rem 0;
+  }
+  .markdown-body li { margin-bottom: 0.25rem; }
+  .markdown-body code {
+    background: rgba(0,0,0,0.06);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.88em;
+    font-family: monospace;
+  }
+  .markdown-body pre {
+    background: rgba(0,0,0,0.06);
+    padding: 0.75rem;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 0.5rem 0;
+  }
+  .user-message .markdown-body h1,
+  .user-message .markdown-body h2,
+  .user-message .markdown-body h3 { color: var(--white); }
+</style>
+
+<script>
+const chatBox = document.getElementById('chatBox');
+const questionInput = document.getElementById('questionInput');
+const sendBtn = document.getElementById('sendBtn');
+
+const AVATAR_URL = "{{ url_for('static', filename='img/favicon-192.png') }}";
+
+let conversationHistory = [];
+
+window.addEventListener('load', function () {
+  chatBox.scrollTop = chatBox.scrollHeight;
+});
+
+function scrollToBottom() {
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function appendMessage(role, text, html) {
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('chat-message', role === 'user' ? 'user-message' : 'bot-message');
+
+  const avatarDiv = document.createElement('div');
+  avatarDiv.classList.add('message-avatar');
+
+  if (role === 'bot') {
+    const img = document.createElement('img');
+    img.src = AVATAR_URL;
+    img.alt = 'StudyMate AI';
+    img.classList.add('avatar-img');
+    avatarDiv.appendChild(img);
+  } else {
+    const userTag = document.createElement('div');
+    userTag.classList.add('avatar-user');
+    userTag.textContent = 'You';
+    avatarDiv.appendChild(userTag);
+  }
+
+  const bubble = document.createElement('div');
+  bubble.classList.add('message-bubble');
+  if (role === 'bot') bubble.classList.add('markdown-body');
+
+  if (role === 'bot' && html) {
+    bubble.innerHTML = html;
+  } else {
+    const p = document.createElement('p');
+    p.textContent = text;
+    bubble.appendChild(p);
+  }
+
+  if (role === 'user') {
+    wrapper.appendChild(bubble);
+    wrapper.appendChild(avatarDiv);
+  } else {
+    wrapper.appendChild(avatarDiv);
+    wrapper.appendChild(bubble);
+  }
+
+  chatBox.appendChild(wrapper);
+  scrollToBottom();
+}
+
+function appendTyping() {
+  const wrapper = document.createElement('div');
+  wrapper.classList.add('chat-message', 'bot-message');
+  wrapper.id = 'typingIndicator';
+
+  const avatarDiv = document.createElement('div');
+  avatarDiv.classList.add('message-avatar');
+  const img = document.createElement('img');
+  img.src = AVATAR_URL;
+  img.alt = 'StudyMate AI';
+  img.classList.add('avatar-img');
+  avatarDiv.appendChild(img);
+
+  const bubble = document.createElement('div');
+  bubble.classList.add('message-bubble', 'typing-bubble');
+  bubble.innerHTML = '<span></span><span></span><span></span>';
+
+  wrapper.appendChild(avatarDiv);
+  wrapper.appendChild(bubble);
+  chatBox.appendChild(wrapper);
+  scrollToBottom();
+}
+
+function removeTyping() {
+  const indicator = document.getElementById('typingIndicator');
+  if (indicator) indicator.remove();
+}
+
+async function sendQuestion() {
+  const question = questionInput.value.trim();
+  if (!question) return;
+
+  appendMessage('user', question);
+  questionInput.value = '';
+  sendBtn.disabled = true;
+  appendTyping();
+
+  try {
+    const response = await fetch('/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        question: question,
+        history: conversationHistory
+      })
+    });
+
+    const data = await response.json();
+    removeTyping();
+
+    const botResponse = data.response || 'Sorry, I could not get a response. Please try again.';
+    const botHtml = data.response_html || null;
+    appendMessage('bot', botResponse, botHtml);
+
+    conversationHistory.push({
+      question: question,
+      response: botResponse
+    });
+
+  } catch (error) {
+    removeTyping();
+    appendMessage('bot', 'A network error occurred. Please check your connection and try again.');
+  }
+
+  sendBtn.disabled = false;
+  questionInput.focus();
+}
+
+questionInput.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') sendQuestion();
+});
+
+function addWatermark(doc) {
+  const pageCount = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    doc.saveGraphicsState();
+    doc.setGState(new doc.GState({ opacity: 0.08 }));
+    doc.setTextColor(120, 120, 120);
+    doc.setFontSize(68);
+    doc.setFont('helvetica', 'bold');
+    // Top watermark - stretched across upper half
+    doc.text('StudyMate', pageWidth / 2, pageHeight * 0.35, {
+      align: 'center',
+      angle: 30,
+      charSpace: 8
+    });
+    // Bottom watermark - stretched across lower half
+    doc.text('StudyMate', pageWidth / 2, pageHeight * 0.72, {
+      align: 'center',
+      angle: 30,
+      charSpace: 8
+    });
+    doc.restoreGraphicsState();
+  }
+}
+
+function downloadHistory() {
+  const messages = chatBox.querySelectorAll('.chat-message');
+  if (messages.length <= 1) {
+    alert('No chat history to download yet.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 15;
+  const usableWidth = pageWidth - margin * 2;
+  let y = 20;
+
+  function checkPage(needed) {
+    if (y + needed > 270) { doc.addPage(); y = 20; }
+  }
+
+  function wrapText(text, maxWidth, lineHeight) {
+    const lines = doc.splitTextToSize(String(text), maxWidth);
+    lines.forEach(function(line) {
+      checkPage(lineHeight);
+      doc.text(line, margin, y);
+      y += lineHeight;
+    });
+  }
+
+  // Purple header bar
+  doc.setFillColor(99, 102, 241);
+  doc.rect(0, 0, pageWidth, 30, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('StudyMate - Chat History', margin, 18);
+  y = 40;
+
+  // Date
+  const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+  doc.setTextColor(107, 114, 128);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Downloaded on: ' + date, margin, y);
+  y += 6;
+  doc.text('Prepared for: ' + STUDYMATE_USER, margin, y);
+  y += 10;
+
+  // Divider
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 8;
+
+  // Messages
+  messages.forEach(function(msg) {
+    if (msg.classList.contains('user-message')) {
+      const bubble = msg.querySelector('.message-bubble p');
+      if (!bubble) return;
+      checkPage(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(99, 102, 241);
+      doc.text('You:', margin, y);
+      y += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(55, 65, 81);
+      wrapText(bubble.textContent, usableWidth, 5);
+      y += 3;
+    } else if (msg.classList.contains('bot-message') && !msg.id) {
+      const bubble = msg.querySelector('.message-bubble');
+      if (!bubble) return;
+      checkPage(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(16, 185, 129);
+      doc.text('StudyMate:', margin, y);
+      y += 5;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(55, 65, 81);
+      wrapText(bubble.innerText, usableWidth, 5);
+      y += 3;
+      checkPage(4);
+      doc.setDrawColor(235, 235, 235);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 5;
+    }
+  });
+
+  // Footer
+  checkPage(10);
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text('Downloaded from StudyMate - studymate.jaotechgworld.com', margin, y);
+
+  addWatermark(doc);
+  doc.save('StudyMate_Chat_History.pdf');
+}
+
+async function clearChat() {
+  if (!confirm('Are you sure you want to clear your entire chat history? This cannot be undone.')) return;
+
+  try {
+    const res = await fetch('/clear-chat', { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) {
+      // Remove all messages except the welcome message
+      const messages = chatBox.querySelectorAll('.chat-message');
+      messages.forEach(function(msg, index) {
+        if (index > 0) msg.remove();
+      });
+      conversationHistory = [];
+
+      // Show confirmation message
+      appendMessage('bot', 'Your chat history has been cleared. Feel free to start a fresh conversation!', null);
+    }
+  } catch (e) {
+    alert('Failed to clear chat history. Please try again.');
+  }
+}
+</script>
+{% endblock %}

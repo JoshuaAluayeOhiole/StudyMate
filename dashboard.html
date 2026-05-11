@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Welcome back, {{ user_name.split()[0] }}</h1>
+  <p>Here is a summary of your study activity on StudyMate.</p>
+</div>
+
+<div class="stats-grid">
+
+  <div class="stat-card">
+    <div class="stat-icon"></div>
+    <div class="stat-info">
+      <h2>{{ stats.total_questions }}</h2>
+      <p>Questions Asked</p>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon"></div>
+    <div class="stat-info">
+      <h2>{{ stats.total_plans }}</h2>
+      <p>Study Plans Generated</p>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon"></div>
+    <div class="stat-info">
+      <h2>{{ stats.recent_sessions | length }}</h2>
+      <p>Active Study Days</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="dashboard-grid">
+
+  <div class="card">
+    <h3 class="card-title">Study Activity (Last 7 Days)</h3>
+    <canvas id="activityChart" height="120"></canvas>
+  </div>
+
+  <div class="card">
+    <h3 class="card-title">Quick Actions</h3>
+    <div class="quick-actions">
+      <a href="{{ url_for('chat') }}" class="action-btn">
+        <span></span>
+        <div>
+          <strong>Ask AI Assistant</strong>
+          <p>Get answers to your academic questions</p>
+        </div>
+      </a>
+      <a href="{{ url_for('study_plan') }}" class="action-btn">
+        <span></span>
+        <div>
+          <strong>Generate Study Plan</strong>
+          <p>Create a personalised weekly schedule</p>
+        </div>
+      </a>
+      <a href="{{ url_for('performance') }}" class="action-btn">
+        <span></span>
+        <div>
+          <strong>View Performance</strong>
+          <p>Track your study progress over time</p>
+        </div>
+      </a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const sessions = {{ stats.recent_sessions | tojson }};
+
+  const labels = sessions.map(s => s.date).reverse();
+  const data = sessions.map(s => s.count).reverse();
+
+  const ctx = document.getElementById('activityChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels.length > 0 ? labels : ['No data yet'],
+      datasets: [{
+        label: 'Questions Asked',
+        data: data.length > 0 ? data : [0],
+        backgroundColor: 'rgba(99, 102, 241, 0.7)',
+        borderColor: 'rgba(99, 102, 241, 1)',
+        borderWidth: 2,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}
