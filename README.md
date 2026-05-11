@@ -123,11 +123,13 @@ The app will be available at `http://localhost:5000`
 StudyMate uses SQLite. The database file `studymate.db` is created automatically on first run. It is excluded from this repository via `.gitignore` to protect user data.
 
 ---
-
 ## Screenshots
 
 
-![alt text](<ai chat page.png>) ![alt text](<dashboard page.png>) ![alt text](<login page.png>) ![alt text](<performance page.png>) ![alt text](<profile page.png>) ![alt text](<quiz page.png>) ![alt text](<registration page.png>) ![alt text](<study plan page.png>)
+![alt text](<registration page.png>) ![alt text](<login page.png>) ![alt text](<dashboard page.png>) ![alt text](<ai chat page.png>) ![alt text](<performance page.png>) ![alt text](<quiz page.png>) ![alt text](<study plan page.png>) ![alt text](<profile page.png>)
+
+
+
 ---
 
 ## Author
