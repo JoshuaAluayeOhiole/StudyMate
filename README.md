@@ -154,3 +154,13 @@ This project was developed as an academic final year project. All rights reserve
 - [Groq](https://groq.com) for the fast AI inference API
 - [Flask](https://flask.palletsprojects.com) for the web framework
 - [jsPDF](https://github.com/parallax/jsPDF) for client-side PDF generation
+
+
+## Feedback & Contributions
+
+Feel free to:
+- Open issues
+- Suggest improvements
+- Contribute to the project
+
+Your feedback is welcome.
