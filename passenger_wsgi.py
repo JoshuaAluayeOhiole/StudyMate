@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, '/home/jaotech/public_html/studymate')
 
 # Set environment variables
-os.environ['GROQ_API_KEY'] = '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'
+os.environ['GROQ_API_KEY'] = 'StudyMate API key'
 
 # Import Flask app
 from app import app as application, init_db
