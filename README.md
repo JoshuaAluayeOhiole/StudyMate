@@ -127,7 +127,7 @@ StudyMate uses SQLite. The database file `studymate.db` is created automatically
 ## Screenshots
 
 
-![alt text](<login page.png>) ![alt text](<registration page.png>) ![alt text](<dashboard page.png>) ![alt text](<ai chats page.png>) ![alt text](<study plan page.png>) ![alt text](<quiz page.png>) ![alt text](<performance page.png>) ![alt text](< profile page.png>)
+![alt text](<registration page.png>) ![alt text](<login page.png>) ![alt text](<dashboard page.png>) ![alt text](<ai chats page.png>) ![alt text](<study plan page.png>) ![alt text](<quiz page.png>) ![alt text](<performance page.png>) ![alt text](< profile page.png>)
 ---
 
 ## Author
