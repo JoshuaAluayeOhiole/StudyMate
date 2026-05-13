@@ -19,7 +19,7 @@ Users select their subjects, choose the exact days and times they are available 
 Users can test their knowledge on any topic. The quiz setup adapts to the user's level:
 - **High School**: Subject and Topic fields
 - **University**: Department, Course Code, and optional Area of Concentration
-- **Self-Learner**: open fields for independent learning topics
+- **Self-Learner**: Open fields for independent learning topics
 
 The AI generates multiple choice questions (5 to 30), scores the user instantly, provides explanations for every answer, and allows the quiz summary to be downloaded as a PDF.
 
